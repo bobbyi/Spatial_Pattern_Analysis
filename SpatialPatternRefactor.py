@@ -51,6 +51,7 @@ set your variables in the section below, and run the program.
 """
 
 import csv
+from collections import defaultdict
 import math
 import os
 import random
@@ -96,7 +97,7 @@ interval_num = 100
 ##values are divided by the simulation results to produce a clustering ratio.
 ##In Morgan et al., 2012, I ran 200 simulations/condition. Experimentation indicated 
 ##that this number of simulations resulted in <1% variability in results.
-sim_run_num = 5
+sim_run_num = 200
 
 
 def loadfile():
@@ -156,12 +157,12 @@ def layer_ybound(sp_data_mod, ymin, ymax):
             layer_bound = (ybound_list[layer][1] + ybound_list[layer + 1][0]) / 2
             ybound_list[layer][1], ybound_list[layer + 1][0] = layer_bound, layer_bound
             ybound_list[0][0], ybound_list[0][layer_num - 1] = ymax, ymin
-        except:
+        except IndexError:
             pass     
     return ybound_list
 
 
-def cluster(sp_data, cell1, cell2):
+def cluster(sp_data_dict, cell1, cell2):
     """Generate clustering values
     This function is the main speed culprit when launched from Aptana or Eclipse/PyDev.
     The "for cell/for compare_cell" loop typically runs ~1-2 million times per function call
@@ -171,63 +172,60 @@ def cluster(sp_data, cell1, cell2):
     Between loops: Aptana/Eclipse <.0001 sec, IDLE: 6-7 sec.
     Given that I will loop through this 1200-6000 times/case doing various calcs, that's huge!"""
     print "cluster in: " + str(time.clock())
-    data_cluster = [0. for unused in xrange(0, analysis_dist + 1)]
-    for cell in sp_data:
-        if cell[0] == cell1:
-            if cell[4] > exclude_dist and cell[5] > exclude_dist and cell[6] > exclude_dist and cell[7] > exclude_dist:
-                #setting these variables here shaves ~7-8% off runtime
-                xloc = cell[1]
-                yloc = cell[2]
-                for compare_cell in sp_data:
-                    if compare_cell[0] == cell2:
-                        dist = math.sqrt((xloc - compare_cell[1])**2 + (yloc - compare_cell[2])**2)
-                        if 0 < dist <= analysis_dist:
-                            array_target = int(math.ceil(dist * analysis_dist / interval_num))
-                            for insert in xrange (array_target, analysis_dist + 1):
-                                data_cluster[insert] += 1
+    data_cluster = [0.] * (analysis_dist + 1)
+    for cell in sp_data_dict[cell1]:
+        if cell[4] > exclude_dist and cell[5] > exclude_dist and cell[6] > exclude_dist and cell[7] > exclude_dist:
+            #setting these variables here shaves ~7-8% off runtime
+            xloc = cell[1]
+            yloc = cell[2]
+            sqrt, ceil = math.sqrt, math.ceil
+            for compare_cell in sp_data_dict[cell2]:
+                dist = sqrt((xloc - compare_cell[1])**2 + (yloc - compare_cell[2])**2)
+                if dist <= analysis_dist:
+                    array_target = int(ceil(dist * analysis_dist / interval_num))
+                    for insert in xrange(array_target, analysis_dist + 1):
+                        data_cluster[insert] += 1
     print "cluster out: " + str(time.clock())
     return data_cluster
 
 
 def cluster_average(cluster1, cluster2):
     """Average together the results of the two runs (one from the "perspective" of each cell type)"""
-    for interval in xrange(0, analysis_dist+1):
-        cluster1[interval] = (float(cluster1[interval]) + float(cluster2[interval]))/2
-    return cluster1
+    return [(cl1 + cl2) / 2.0 for cl1, cl2 in zip(cluster1, cluster2)]
 
 
-def sim_gen(sp_data, xmin, xmax, ybound_list):
+def sim_gen(sp_data_dict, xmin, xmax, ybound_list):
     """Make a simulated version of the cell distribution with random locations"""
     sim_data = []
-    for cell in sp_data:
-        yrand = random.uniform(ybound_list[cell[3]-1][0], ybound_list[cell[3]-1][1])
-        sim_data.append([cell[0], random.uniform(xmin, xmax), yrand, cell[3]])
-    return sim_data
+    for cell_list in sp_data_dict.values():
+        for cell in cell_list:
+            yrand = random.uniform(ybound_list[cell[3]-1][0], ybound_list[cell[3]-1][1])
+            sim_data.append([cell[0], random.uniform(xmin, xmax), yrand, cell[3]])
+    return sp_data_dict
 
 
-def sim_boundaries(sim_data, xmin, xmax, ymin, ymax):
+def sim_boundaries(sp_data_dict, xmin, xmax, ymin, ymax):
     """Modified version of boundaries function so as not to reset boundaries smaller in simulation runs
     There is probably a better way to refactor all of the boundaries functions"""
-    for cell in sim_data:
-        xmin_dist = abs(cell[1] - xmin)
-        xmax_dist = abs(xmax - cell[1])
-        ymin_dist = abs(cell[2] - ymin)
-        ymax_dist = abs(ymax - cell[2])
-        cell.append(xmin_dist)
-        cell.append(xmax_dist)
-        cell.append(ymin_dist)
-        cell.append(ymax_dist)
-    return sim_data
+    for cell_list in sp_data_dict.values():
+        for cell in cell_list:
+            xmin_dist = abs(cell[1] - xmin)
+            xmax_dist = abs(xmax - cell[1])
+            ymin_dist = abs(cell[2] - ymin)
+            ymax_dist = abs(ymax - cell[2])
+            cell.append(xmin_dist)
+            cell.append(xmax_dist)
+            cell.append(ymin_dist)
+            cell.append(ymax_dist)
+    return sp_data_dict
 
 
-def sim_iterate(sim_run_num, sp_data_mod, cell1, cell2, xmin, xmax, ymin, ymax, ybound_list):
+def sim_iterate(sim_run_num, sp_data_dict, cell1, cell2, xmin, xmax, ymin, ymax, ybound_list):
     """This is the main function that runs simulations of cellular location"""
-    sim_track = []
-    for unused in xrange(0, analysis_dist + 1):
-        sim_track.append(0)
+    sim_track = [0] * (analysis_dist + 1)
     for run_count in xrange(0, sim_run_num):
         print "simulation run " + str(run_count + 1)
-        sim_raw = sim_boundaries(sim_gen(sp_data_mod, xmin, xmax, ybound_list), xmin, xmax, ymin, ymax)
+        sim_raw = sim_boundaries(sim_gen(sp_data_dict, xmin, xmax, ybound_list), xmin, xmax, ymin, ymax)
         if cell1 == cell2:
             sim_cluster = cluster(sim_raw, cell1, cell1)
         else:
@@ -241,9 +239,7 @@ def sim_iterate(sim_run_num, sp_data_mod, cell1, cell2, xmin, xmax, ymin, ymax, 
 
 def sim_correct(data_cluster, sim_cluster):
     """Use simulation output to correct density-correct clustering data"""
-    corrected_output = []
-    for unused in xrange(0, analysis_dist + 1):
-        corrected_output.append(0)
+    corrected_output = [0] * (analysis_dist + 1)
     for location in xrange(0, analysis_dist + 1):
         try:
             corrected_output[location] = data_cluster[location] / sim_cluster[location]
@@ -254,17 +250,20 @@ def sim_correct(data_cluster, sim_cluster):
 
 sp_data = loadfile()
 sp_data_mod, xmin, xmax, ymin, ymax = boundaries(sp_data)
+sp_data_dict = defaultdict(list)
+for cell in sp_data_mod:
+    sp_data_mod[cell[0]].append(cell)
 
 print "data cluster run"
 if cell1 == cell2:
-    data_cluster = cluster(sp_data_mod, cell1, cell1)
+    data_cluster = cluster(sp_data_dict, cell1, cell1)
 else:
-    data_cluster = cluster_average(cluster(sp_data_mod, cell1, cell2), cluster(sp_data_mod, cell2, cell1))
+    data_cluster = cluster_average(cluster(sp_data_dict, cell1, cell2), cluster(sp_data_dict, cell2, cell1))
 print "data cluster values: "
 print data_cluster
 
 ybound_list = layer_ybound(sp_data_mod, ymin, ymax)
-sim_cluster = sim_iterate(sim_run_num, sp_data_mod, cell1, cell2, xmin, xmax, ymin, ymax, ybound_list)
+sim_cluster = sim_iterate(sim_run_num, sp_data_dict, cell1, cell2, xmin, xmax, ymin, ymax, ybound_list)
 print "sim clustering value:"
 print sim_cluster
 
