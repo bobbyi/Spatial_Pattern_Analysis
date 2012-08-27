@@ -56,8 +56,6 @@ import os
 import random
 import time
 
-import xlwt
-
 #Directory containing input files
 directory = os.path.dirname(__file__)
 
@@ -281,16 +279,3 @@ print "output clustering value: "
 print sp_output
 
 print "run time: " + str(time.clock())
-
-#set up worksheet to write to
-book = xlwt.Workbook(encoding="utf-8")
-sheet1 = book.add_sheet("Python Sheet 1")
-
-##populate excel worksheet
-for location in range(0, analysis_dist + 1):
-    sheet1.write(0, location, (str(location) + " um"))
-    sheet1.write(1, location, sp_output[location])
-
-#save the spreadsheet
-savepath = os.path.join(directory, outputfile + ".xls")
-book.save(savepath)
