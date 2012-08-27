@@ -117,16 +117,10 @@ def boundaries(sp_data):
     """This function finds the max and min x and y ROI boundaries in the data file.
     The data file is modified so that the distance of each cell from these boundaries is recorded
     in positions cell[4] - cell[7]."""
-    xmin, ymin, xmax, ymax = sp_data[0][1], sp_data[0][2], sp_data[0][1], sp_data[0][2]
-    for cell in sp_data:
-        if cell[1] < xmin:
-            xmin = cell[1]
-        if cell[1] > xmax:
-            xmax = cell[1]
-        if cell[2] < ymin:
-            ymin = cell[2]
-        if cell[2] > ymax:
-            ymax = cell[2]
+    xmin = min(cell[1] for cell in sp_data)
+    xmax = max(cell[1] for cell in sp_data)
+    ymin = min(cell[2] for cell in sp_data)
+    ymax = max(cell[2] for cell in sp_data)
     for cell in sp_data:
         xmin_dist = abs(cell[1] - xmin)
         xmax_dist = abs(xmax - cell[1])
