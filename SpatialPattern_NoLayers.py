@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 ##This is a refactored Python version of my spatial pattern analysis program, published 
 ##in Morgan et al., 2012. The program examines the distribution of cellular or other 
 ##populations to determine whether they are randomly spaced or instead more or less closely 
