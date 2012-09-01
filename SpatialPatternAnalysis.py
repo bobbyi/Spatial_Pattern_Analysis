@@ -204,6 +204,7 @@ def cluster(sp_data, celltype1, celltype2):
     class1_cells = [cell for cell in sp_data if cell[0] == celltype1]
     class2_cells = [cell for cell in sp_data if cell[0] == celltype2]
     raw_cluster = [0.] * (analysis_dist)
+    analysis_dist_squared = analysis_dist ** 2
     for cell1 in class1_cells:
         if (cell1[4] > exclude_dist and cell1[5] > exclude_dist and 
             cell1[6] > exclude_dist and cell1[7] > exclude_dist):
@@ -211,11 +212,12 @@ def cluster(sp_data, celltype1, celltype2):
             xloc = cell1[1]
             yloc = cell1[2]
             for cell2 in class2_cells:
-                dist = math.sqrt((xloc - cell2[1])**2 + (yloc - cell2[2])**2)
-                if dist > 0 and dist < analysis_dist:
+                dist_squared = (xloc - cell2[1]) ** 2 + (yloc - cell2[2]) ** 2
+                if 0 < dist_squared < analysis_dist_squared:
+                    dist = math.sqrt(dist_squared)
                     array_target = int(math.ceil(dist * (analysis_dist - 1) / 
                                                  interval_num))
-                    for insert in range (array_target, analysis_dist):
+                    for insert in xrange(array_target, analysis_dist):
                         raw_cluster[insert] += 1
     return raw_cluster
 
