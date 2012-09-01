@@ -56,7 +56,8 @@
 # User set variables here
 
 # Directory containing input files
-directory = r"c:\Documents and Settings\Administrator\Desktop\Spacing UMB Raw"
+import os
+directory = os.path.dirname(__file__)
 
 # Name of cell coordinate data file from Stereo Investigator. 
 # There should be a header, leave it in.
@@ -101,7 +102,7 @@ interval_num = 100
 # In Morgan et al., 2012, I ran 200 simulations/condition.  Experimentation 
 # indicated that this number of simulations resulted in very low variability 
 # in results.  1000 simulations may be ideal if you have the time/power.
-sim_run_num = 5
+sim_run_num = 100
 
 ##############################################################################
 # Program begins here
@@ -112,14 +113,14 @@ import math
 import random
 import time
 
-import xlwt
+#import xlwt
 
 
 def loadfile():
     """Load and cleanup file. Output is sp_data, which contains all cells. 
     Output is [[celltype1, xcoord1, ycoord1],[celltype2, xcoord2, ycoord2], 
     etc]"""
-    path = directory + "\\" + inputfile
+    path = os.path.join(directory, inputfile)
     myfileobj = open(path,"r") 
     csv_read = csv.reader(myfileobj,dialect = csv.excel_tab)
     sp_data = []
@@ -200,7 +201,6 @@ def layer_ybound(sp_data_mod, ymin, ymax):
 def cluster(sp_data, celltype1, celltype2):
     """Generate clustering values.
     This function is the main time sink of the program right now."""
-    print "cluster in: " + str(time.clock())
     class1_cells = [cell for cell in sp_data if cell[0] == celltype1]
     class2_cells = [cell for cell in sp_data if cell[0] == celltype2]
     raw_cluster = [0.] * (analysis_dist)
@@ -217,7 +217,6 @@ def cluster(sp_data, celltype1, celltype2):
                                                  interval_num))
                     for insert in range (array_target, analysis_dist):
                         raw_cluster[insert] += 1
-    print "cluster out: " + str(time.clock())
     return raw_cluster
 
 
@@ -331,14 +330,14 @@ print sp_output
 print "run time: " + str(time.clock())
 
 # Set up worksheet to write results to
-book = xlwt.Workbook(encoding="utf-8")
-sheet1 = book.add_sheet("Python Sheet 1")
-
-# Populate excel worksheet with headers and results
-for location in xrange(analysis_dist):
-    sheet1.write(0, location, (str(location) + " um"))
-    sheet1.write(1, location, sp_output[location])
-
-# Save the spreadsheet
-savepath = directory + "\\" + outputfile + ".xls"
-book.save(savepath)
+#book = xlwt.Workbook(encoding="utf-8")
+#sheet1 = book.add_sheet("Python Sheet 1")
+#
+## Populate excel worksheet with headers and results
+#for location in xrange(analysis_dist):
+    #sheet1.write(0, location, (str(location) + " um"))
+    #sheet1.write(1, location, sp_output[location])
+#
+## Save the spreadsheet
+#savepath = directory + "\\" + outputfile + ".xls"
+#book.save(savepath)
